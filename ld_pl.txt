@@ -1,0 +1,2 @@
+LD_PRELOAD=/lib64/libgomp.so.1 python3 assay_gui_6-1.py
+sudo su -l root -c "LD_PRELOAD=/lib64/libgomp.so.1 python3 /opt/amdi/hardware_controlGUI/tabs.py"
