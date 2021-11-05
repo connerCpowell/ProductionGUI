@@ -39,6 +39,8 @@ except Exception:
     patcher.start()
     from pymba import Vimba
 
+
+import cv2
 import smbus
 import os 
 from E20 import E20
@@ -58,7 +60,7 @@ import datetime as dt
 # import matplotlib.animation as animation
 import numpy as np
 #import functions as cf
-import cv2
+
 import subprocess
 from tkinter import StringVar
 from datetime import datetime
@@ -115,6 +117,7 @@ class TC74:
         self.devaddr         = devaddr  # in the docs it seemed to be 0x4d?
         self.reg_temp        = 0x00     # temp register in 2's complement format
         self.reg_config      = 0x01
+        self.gainState       = 0x0b
         self.ADC0MSB         = 0x0c
         self.ADC0LSB         = 0x0d
         self.ADC1MSB         = 0x0e
@@ -147,6 +150,61 @@ class TC74:
             Gain = gain1M + gain1L
             
         return (Gain)
+
+    def read_gainMode(self):
+        gain1 = self.tc74_i2c_bus.read_byte_data(self.devaddr, self.gainState)
+
+        return gain1
+
+    def Gain1on(self):
+        gain1 = self.tc74_i2c_bus.read_byte_data(self.devaddr, self.gainState)
+
+        if gain1==2:
+            self.tc74_i2c_bus.write_byte_data(self.devaddr, self.gainState, 3)
+
+        else:
+             self.tc74_i2c_bus.write_byte_data(self.devaddr, self.gainState, 1)
+       
+    
+    def Gain1off(self):
+        gain1 = self.tc74_i2c_bus.read_byte_data(self.devaddr, self.gainState)
+
+        if gain1==2 or gain1==3:
+            self.tc74_i2c_bus.write_byte_data(self.devaddr, self.gainState, 2)
+
+        else:
+             self.tc74_i2c_bus.write_byte_data(self.devaddr, self.gainState, 0)
+
+
+
+    def Gain2on(self):
+        gain1 = self.tc74_i2c_bus.read_byte_data(self.devaddr, self.gainState)
+
+        if gain1==1:
+            self.tc74_i2c_bus.write_byte_data(self.devaddr, self.gainState, 3)
+
+        else:
+            self.tc74_i2c_bus.write_byte_data(self.devaddr, self.gainState, 2)
+
+
+        
+
+    def Gain2off(self):
+        gain1 = self.tc74_i2c_bus.read_byte_data(self.devaddr, self.gainState)
+
+        if gain1==0 or gain1==1:
+            print('gain 2 off')
+
+        elif gain1==2:
+            self.tc74_i2c_bus.write_byte_data(self.devaddr, self.gainState, 0)
+
+        elif gain1==3:
+            self.tc74_i2c_bus.write_byte_data(self.devaddr, self.gainState, 1)
+
+
+        
+        #self.tc74_i2c_bus.write_byte_data(self.devaddr, self.gainState, 1)
+
     
     def read_temp(self):
         temp   = self.tc74_i2c_bus.read_byte_data(self.devaddr, self.reg_temp)
@@ -601,6 +659,42 @@ class Window(Frame):
             gain = tc74_sensor.read_gain2()
 
             return gain
+
+        def gainOut():
+
+            LID_SENSOR_MULTIPLEXER = 0x49
+            tc74_sensor = TC74(1, LID_SENSOR_MULTIPLEXER)  # temp sensor on bus 1 address 0x48
+            gain = str(tc74_sensor.read_gainMode())
+            gainMode.set(gain)
+
+        def Gain1on():
+
+            LID_SENSOR_MULTIPLEXER = 0x49
+            tc74_sensor = TC74(1, LID_SENSOR_MULTIPLEXER)  # temp sensor on bus 1 address 0x48
+            gain = str(tc74_sensor.Gain1on())
+
+
+        def Gain1off():
+
+            LID_SENSOR_MULTIPLEXER = 0x49
+            tc74_sensor = TC74(1, LID_SENSOR_MULTIPLEXER)  # temp sensor on bus 1 address 0x48
+            gain = str(tc74_sensor.Gain1off())
+
+        def Gain2on():
+
+            LID_SENSOR_MULTIPLEXER = 0x49
+            tc74_sensor = TC74(1, LID_SENSOR_MULTIPLEXER)  # temp sensor on bus 1 address 0x48
+            gain = str(tc74_sensor.Gain2on())
+
+        def Gain2off():
+
+            LID_SENSOR_MULTIPLEXER = 0x49
+            tc74_sensor = TC74(1, LID_SENSOR_MULTIPLEXER)  # temp sensor on bus 1 address 0x48
+            gain = str(tc74_sensor.Gain2off())
+
+
+
+
             
             
            
@@ -647,6 +741,19 @@ class Window(Frame):
             self.e20.camera.capture(
                                     flash=True,
                                     filename=filename)
+
+
+            input_file=filename
+            gray_img=cv2.imread(input_file,0) 
+            #cv2.putText(gray_img,'Array',(500,280), cv2.FONT_HERSHEY_SIMPLEX, 12,(255,0,0),2)
+
+            windowname = "array"
+            cv2.namedWindow(windowname, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(windowname, (440,240))
+            cv2.imshow(windowname, gray_img)
+            # cv2.waitKey()
+            # cv2.destroyWindow(windowname)
+            #display_image(gray_img, 'Detected circles', 5000)
             msgBox=messagebox.askquestion('Cam','Did camera capture a .tiff?')
             if (msgBox == 'yes'):
                 captureButton["bg"] = "green"
@@ -735,7 +842,7 @@ class Window(Frame):
                 self.e20.motor.pid_reset()
 
             self.e20.motor.position_abs(self.v1)
-            sleep(5)
+            sleep(2)
             count = self.e20.motor.controller.get_actual_encoder_count_modulo()
             msgBox=messagebox.askquestion('Is this pos. optimal?', count)
             if (msgBox == 'no'):
@@ -752,16 +859,18 @@ class Window(Frame):
                  
 
         def dondeTres():
-            self.e20.motor.position_settings()
+            if self.e20.motor.reset_pid:
+                self.e20.motor.pid_reset()
+            
             self.e20.motor.position_abs(self.v5)
             sleep(5)
-            count = self.e20.motor.get_actual_encoder_count_modulo()
+            count = self.e20.motor.controller.get_actual_encoder_count_modulo()
             msgBox=messagebox.askquestion('Is this pos. optimal?', count)
             if (msgBox == 'no'):
                 messagebox.showinfo('Adjust to position')
-                self.e20.motor.brake()
+                self.e20.motor.motor_release()
                 sleep(3)
-                count = self.e20.motor.get_actual_encoder_count_modulo()
+                count = self.e20.motor.controller.get_actual_encoder_count_modulo()
                 messagebox.showinfo('V5 cal:', count)
                 self.v5 = count    
                 print('position=', self.v5)
@@ -770,18 +879,18 @@ class Window(Frame):
                 return 0 
 
         def dondeQua():
-            #array = -127
-            self.e20.motor.position_settings()
+            if self.e20.motor.reset_pid:
+                self.e20.motor.pid_reset()
+            
             self.e20.motor.position_abs(self.va)
-            #messagebox.showinfo('Array=',self.va)
             sleep(2)
-            count = self.e20.motor.get_actual_encoder_count_modulo()
+            count = self.e20.motor.controller.get_actual_encoder_count_modulo()
             msgBox=messagebox.askquestion('Is this pos. optimal?', count)
             if (msgBox == 'no'):
                 messagebox.showinfo('Adjust to position')
                 self.e20.motor.brake()
                 sleep(3)
-                count = self.e20.motor.get_actual_encoder_count_modulo()
+                count = self.e20.motor.controller.get_actual_encoder_count_modulo()
                 messagebox.showinfo('Array cal:', count)
                 self.va = count    
                 print('position=', self.va)
@@ -1107,6 +1216,13 @@ class Window(Frame):
         varD2.place(x = 280, y = 225)
         varD2.insert(END,'Not detected')
 
+        self.gMode = Label(tab2, text = '', fg = 'Blue', font = Labels)
+        self.gMode.place(x = 140, y = 305)
+        gMode = Entry(tab2, textvariable=gainMode)
+        gMode.pack()
+        gMode.place(x = 140, y = 305)
+        gMode.insert(END, 'n/a')
+
         # Turn laser 1 on
         laser1Button = Button(tab2, text = "Lsr1", font = Buttons, command = laser1)
         laser1Button.place(x=10, y=85)
@@ -1117,7 +1233,24 @@ class Window(Frame):
 
         # View results
         resultsButton = Button(tab2, text = "Lsr1 swp", font = Buttons, command = laserSweep)
-        resultsButton.place(x=10,y=285)
+        # resultsButton.place(x=10,y=285)
+
+        gainButton =  Button(tab2, text = "Gain State", font = Buttons, command = gainOut)
+        gainButton.place(x=10,y=305)
+
+        gain1onButton = Button(tab2, text = "G1-0", font = SubTitle, command = Gain1on)
+        gain1onButton.place(x=10, y=335)
+
+        gain1offButton = Button(tab2, text = "G1-1", font = SubTitle, command = Gain1off)
+        gain1offButton.place(x=70, y=335)
+
+        gain2onButton = Button(tab2, text = "G2-0", font = SubTitle, command = Gain2on)
+        gain2onButton.place(x=130, y=335)
+
+        gain2offButton = Button(tab2, text = "G2-1", font = SubTitle, command = Gain2off)
+        gain2offButton.place(x=190, y=335)
+
+
         
         
         # Turn led1 on
@@ -1270,6 +1403,7 @@ gain2Var = StringVar()
 posiVar = StringVar()
 d1Var = StringVar()
 d2Var = StringVar()
+gainMode = StringVar()
 
 #size of the window
 root.geometry("800x480")
