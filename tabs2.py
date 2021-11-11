@@ -847,7 +847,7 @@ class Window(Frame):
                 self.e20.motor.pid_reset()
 
             self.e20.motor.position_abs(self.v1)
-            while not self.e20.motor.info(check_bit=MOVE_COMPLETED):
+            while not self.e20.motor.flag_info(check_bit=MOVE_COMPLETED):
                 pass
             sleep(2)
             
@@ -875,7 +875,7 @@ class Window(Frame):
                 self.e20.motor.pid_reset()
 
             self.e20.motor.position_abs(self.v5)
-            while not self.e20.motor.info(check_bit=MOVE_COMPLETED):
+            while not self.e20.motor.flag_info(check_bit=MOVE_COMPLETED):
                 pass
             sleep(2)
             
@@ -903,7 +903,7 @@ class Window(Frame):
                 self.e20.motor.pid_reset()
 
             self.e20.motor.position_abs(self.va)
-            while not self.e20.motor.info(check_bit=MOVE_COMPLETED):
+            while not self.e20.motor.flag_info(check_bit=MOVE_COMPLETED):
                 pass
             sleep(2)
             
